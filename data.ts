@@ -1,6 +1,6 @@
 import Core from "../../index.js";
 import Module from "./index.js";
-import DiscordModule from "../ts-module-discord/index.js";
+import DiscordModule from "../discord/index.js";
 import { BaseData } from "../../data.js";
 
 import * as Discord from "discord.js";
