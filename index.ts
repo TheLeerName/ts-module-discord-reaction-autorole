@@ -204,7 +204,7 @@ class DiscordReactionAutoRoleModule {
 		}
 
 		if (!member.roles.cache.has(guildData.role.id)) await member.roles.add(guildData.role);
-		this.log.info("Guild member was verified", {args: {
+		this.log.info("Added role to guild member", {args: {
 			guild: `${reaction.message.guild.name} (${reaction.message.guild.id})`,
 			user: `${user.username} (${user.id})`
 		}});
@@ -232,7 +232,7 @@ class DiscordReactionAutoRoleModule {
 		}
 
 		if (member.roles.cache.has(guildData.role.id)) await member.roles.remove(guildData.role);
-		this.log.info("Guild member was unverified", {args: {
+		this.log.info("Removed role from guild member", {args: {
 			guild: `${reaction.message.guild.name} (${reaction.message.guild.id})`,
 			user: `${user.username} (${user.id})`
 		}});

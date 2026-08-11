@@ -27,11 +27,13 @@ export default () => {
 			const guildData = Module.data.getGuild(interaction.guild);
 
 			if (messageLink) {
-				const startLink = `https://discordapp.com/channels/${interaction.guild.id}/`;
-				if (!messageLink.startsWith(startLink))
-					throw new Error("Ссылка на сообщение неверна или сообщение находится не на этом сервере");
-				messageLink = messageLink.substring(startLink.length);
-				const channelID = messageLink.substring(0, messageLink.indexOf("/"));
+				const m = messageLink.match(/https:\/\/.+?\..+?\/channels\/(.+?)\/(.+?)\/(.+)/);
+				if (!m || m.length < 4)
+					throw new Error("Ссылка на сообщение неверна");
+
+				if (m[1] !== interaction.guild.id)
+					throw new Error("Сообщение находится не на этом сервере");
+				const channelID = m[2];
 				const channel = await interaction.client.channels.fetch(channelID);
 				if (!channel)
 					throw new Error("Указанный канал не найден");
@@ -42,9 +44,7 @@ export default () => {
 				if (!channel.isTextBased())
 					throw new Error("Указанный канал не текстовый");
 
-				messageLink = messageLink.substring(channelID.length + 1);
-				let index = messageLink.indexOf("/");
-				const messageID = messageLink.substring(0, index > -1 ? index : messageLink.length);
+				const messageID = m[3];
 				await channel.messages.fetch(messageID);
 
 				guildData.channel = channel;
