@@ -9,12 +9,12 @@ class Guild {
 	guild: Discord.Guild | null;
 	enabled: boolean;
 
-	channel: Discord.GuildTextBasedChannel | null;
+	channel: Discord.GuildTextBasedChannel | null = null;
 	channelID: string | undefined;
 
 	messageID: string | undefined;
 
-	role: Discord.Role | null;
+	role: Discord.Role | null = null;
 	roleID: string | undefined;
 
 	constructor(guild: typeof this.guild, enabled: typeof this.enabled, channel: typeof this.channel | typeof this.channelID, messageID: typeof this.messageID, role: typeof this.role | typeof this.roleID) {
@@ -104,8 +104,6 @@ export namespace Guild {
 
 export default class ModuleData extends BaseData {
 	readonly guilds: Map<string, Guild> = new Map();
-
-	protected moduleName: string;
 
 	async initialize() {
 		const json = this.getSavedFields();
