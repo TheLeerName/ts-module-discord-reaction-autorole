@@ -1,6 +1,6 @@
 import Core from "../../../index.js";
 import Module from "../index.js";
-import { SlashCommand } from "../../discord/index.js";
+import DiscordModule, { SlashCommand } from "../../discord/index.js";
 
 import * as Discord from "discord.js";
 
@@ -17,14 +17,14 @@ export default () => {
 		await interaction.deferReply();
 
 		const args: any = {
-			guild: `${interaction.guild.name} (${interaction.guild.id})`,
-			user: `${interaction.user.username} (${interaction.user.id})`
+			guild: DiscordModule.getGuildNameAndID(interaction.guild),
+			member: DiscordModule.getGuildMemberNameAndID(interaction.member),
 		};
 		try {
 			let messageLink = interaction.options.getString("message-link");
 			const role = interaction.options.getRole("role");
 
-			const guildData = Module.data.getGuild(interaction.guild);
+			const state = Module.guilds.createAndGet(interaction.guild);
 
 			if (messageLink) {
 				const m = messageLink.match(/https:\/\/.+?\..+?\/channels\/(.+?)\/(.+?)\/(.+)/);
@@ -47,12 +47,14 @@ export default () => {
 				const messageID = m[3];
 				await channel.messages.fetch(messageID);
 
-				guildData.channel = channel;
-				guildData.messageID = messageID;
+				state.channel = channel;
+				state.channelID = channel.id;
+				state.messageID = messageID;
 			}
 			else {
-				guildData.channel = null;
-				guildData.messageID = undefined;
+				delete state.channel;
+				delete state.channelID;
+				delete state.messageID;
 			}
 
 			if (role) {
@@ -60,19 +62,28 @@ export default () => {
 				if (interaction.guild.roles.comparePositions(me.roles.highest, role) < 0)
 					throw new Error("Я не могу назначать эту роль, поставьте мою роль выше указанной роли в настройках сервера");
 
-				guildData.role = role;
+				state.roleID = role.id;
 			}
 			else
-				guildData.role = null;
+				delete state.roleID;
 
-			if (guildData.channel && guildData.messageID && guildData.role)
-				guildData.enabled = true;
+			state.enabled = state.channel != null && state.messageID != null && state.roleID != null;
 
-			args.role = guildData.role ? `${guildData.role.name} (${guildData.role.id})` : guildData.roleID ?? guildData.role;
-			args.channelID = guildData.channel ? `${guildData.channel.name} (${guildData.channel.id})` : guildData.channelID ?? guildData.channel;
-			args.messageID = guildData.messageID;
+			args.roleID = state.roleID;
+			args.channel = state.getChannelName();
+			args.messageID = state.messageID;
 			await interaction.editReply({embeds: [new Discord.EmbedBuilder()
 				.setTitle(`:white_check_mark: Успешно!`)
+				.setFields(
+					{
+						name: "Выдающаяся роль за реакцию в сообщении",
+						value: state.roleID != null ? `<@&${state.roleID}>` : `*не установлено*`,
+					},
+					{
+						name: "Cообщение с реакцией",
+						value: state.channel != null && state.messageID != null ? `https://discord.com/channels/${interaction.guild.id}/${state.channel.id}/${state.messageID}` : `*не установлено*`,
+					}
+				)
 				.setColor("#77b255")
 				.setFooter({text: `Время обработки: ${Core.humanizeDuration(Date.now() - start)}`})
 			]});

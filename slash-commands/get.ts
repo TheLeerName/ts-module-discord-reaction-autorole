@@ -1,6 +1,6 @@
 import Core from "../../../index.js";
 import Module from "../index.js";
-import { SlashCommand } from "../../discord/index.js";
+import DiscordModule, { SlashCommand } from "../../discord/index.js";
 
 import * as Discord from "discord.js";
 
@@ -20,37 +20,30 @@ export default () => {
 		await interaction.deferReply();
 
 		const args: any = {
-			guild: `${interaction.guild.name} (${interaction.guild.id})`,
-			user: `${interaction.user.username} (${interaction.user.id})`
+			guild: DiscordModule.getGuildNameAndID(interaction.guild),
+			member: DiscordModule.getGuildMemberNameAndID(interaction.member),
 		};
 		try {
-			const guildData = Module.data.getGuild(interaction.guild);
+			const state = Module.guilds.createAndGet(interaction.guild);
 
-			args.role = guildData.role ? `@${guildData.role.name} (${guildData.role.id})` : guildData.roleID ?? guildData.role;
-			args.channelID = guildData.channel ? `${guildData.channel.name} (${guildData.channel.id})` : guildData.channelID ?? guildData.channel;
-			args.messageID = guildData.messageID;
+			args.roleID = state.roleID;
+			args.channel = state.getChannelName();
+			args.messageID = state.messageID;
 			await interaction.editReply({embeds: [new Discord.EmbedBuilder()
 				.setTitle(`:notepad_spiral: Параметры модуля "${Module.name}" этого сервера`)
 				.setFields(
 					{
 						name: "Выдающаяся роль за реакцию в сообщении",
-						value: guildData.role ? `<@&${guildData.role.id}>` : `*не установлено*`
+						value: state.roleID != null ? `<@&${state.roleID}>` : `*не установлено*`,
 					},
 					{
 						name: "Cообщение с реакцией",
-						value: guildData.channel && guildData.messageID ? `https://discord.com/channels/${interaction.guild.id}/${guildData.channel.id}/${guildData.messageID}` : `*не установлено*`
+						value: state.channel != null && state.messageID != null ? `https://discord.com/channels/${interaction.guild.id}/${state.channel.id}/${state.messageID}` : `*не установлено*`,
 					}
 				)
 				.setColor("#77b255")
 				.setFooter({text: `Время обработки: ${Core.humanizeDuration(Date.now() - start)}`})
 			]});
-			// TODO: [20:07:39.360] [ERROR] [/node:internal/process/task_queues:105:5] DiscordjsTypeError [InvalidType]: Command guild-verification-reaction-set guild-verification-reaction-set failed: Supplied role is not a Role nor a Snowflake.
-		//guild: "undefined (590783997106454539)"
-	// user: "theleername (456750857015263262)"
-		//role: undefined
-		//channelID: "『✅』верификация (1218838274903244820)"
-		//messageID: "1220393087444975676"
-		//code: "InvalidType"
 			Module.log.info(`Command ${c.name} success`, {args: {
 				guild: `${interaction.guild.name} (${interaction.guild.id})`,
 				user: `${interaction.user.username} (${interaction.user.id})`
@@ -63,7 +56,7 @@ export default () => {
 				.setColor("#dd2e44")
 				.setFooter({text: `Время обработки: ${Core.humanizeDuration(Date.now() - start)}`})
 			]});
-	
+
 			Module.log.error(`Command ${c.name} failed`, {error, args});
 		}
 	});
