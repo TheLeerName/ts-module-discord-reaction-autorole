@@ -16,7 +16,7 @@ class DiscordReactionAutoRoleModule {
 
 		DiscordModule
 			.once("addAuthorizationFields", a => a
-				.addPermissions(Discord.PermissionFlagsBits.ReadMessageHistory, Discord.PermissionFlagsBits.ManageRoles, Discord.PermissionFlagsBits.ViewChannel, Discord.PermissionFlagsBits.UseApplicationCommands)
+				.addPermissions(Discord.PermissionFlagsBits.ReadMessageHistory, Discord.PermissionFlagsBits.ManageRoles, Discord.PermissionFlagsBits.ViewChannel)
 				.addIntents(Discord.GatewayIntentBits.Guilds, Discord.GatewayIntentBits.GuildMessages, Discord.GatewayIntentBits.GuildMessageReactions)
 				.addPartials(Discord.Partials.Message, Discord.Partials.Reaction, Discord.Partials.Channel))
 			.once("afterClientCreation", () => this.afterDiscordClientCreation());
