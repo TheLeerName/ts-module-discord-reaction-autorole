@@ -51,6 +51,7 @@ export default () => Module.discord.slashCommands.make("reaction-autorole-set", 
 			delete state.channelID;
 			delete state.messageID;
 		}
+		Module.data.needsSave = true;
 
 		if (role) {
 			const me = await interaction.guild.members.fetchMe();
