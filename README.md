@@ -5,7 +5,7 @@ Adds specified role to any user reacted to specified discord message, before sta
 1. Adds slash commands:
 
 |Name|Type|Description|
-|---|---|
+|---|---|---|
 |`/reaction-autorole-set`|Guild-only|Sets some required parameters for discord server:<br>- Link to message with reaction<br>- Gained role for reaction|
 |`/reaction-autorole-get`|Guild-only|Sends these parameters above as discord embed message|
 
