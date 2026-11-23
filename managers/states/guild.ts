@@ -1,5 +1,4 @@
 import Module from "../../index.js";
-import DiscordModule from "../../../discord/index.js";
 import type { GuildStateManager } from "../guild.js";
 
 import type {
@@ -38,20 +37,21 @@ export class GuildState {
 		return this.enabled && this.guild != null && this.guild.available;
 	}
 	getGuildName() {
-		return this.guild != null ? DiscordModule.getGuildNameAndID(this.guild) : this.guildID;
+		return this.guild != null ? Module.discord.getGuildNameAndID(this.guild) : this.guildID;
 	}
 	getChannelName() {
-		return this.channel != null ? DiscordModule.getChannelNameAndID(this.channel) : this.channelID;
+		return this.channel != null ? Module.discord.getChannelNameAndID(this.channel) : this.channelID;
 	}
 
 	/** **NOTE:** this method may set {@link Module.data.needsSave} to `true` */
 	async setChannelFromFetch() {
 		if (this.channelID != null) {
-			this.channel = (await DiscordModule.fetchChannelWithNotFoundHandling(this.guild!, this.channelID) ?? undefined) as typeof this.channel;
+			this.channel = (await Module.discord.fetchChannelWithNotFoundHandling(this.guild!, this.channelID) ?? undefined) as typeof this.channel;
 			if (this.channel == null)
 				this.unsetChannel();
 		}
 	}
+	/** **NOTE:** this method will set {@link Module.data.needsSave} to `true` */
 	unsetChannel(reason?: string) {
 		Module.log.warn(`Guild was disabled`, {causedBy: reason ?? `"channel" was unset`, args: {
 			guild: this.getGuildName(),
@@ -70,6 +70,7 @@ export class GuildState {
 				this.unsetRole();
 		}
 	}
+	/** **NOTE:** this method will set {@link Module.data.needsSave} to `true` */
 	unsetRole(reason?: string) {
 		Module.log.warn(`Guild was disabled`, {causedBy: reason ?? `"roleID" was unset`, args: {
 			guild: this.getGuildName(),
@@ -82,11 +83,12 @@ export class GuildState {
 	/** **NOTE:** this method may set {@link Module.data.needsSave} to `true` */
 	async setMessageFromFetch() {
 		if (this.channel != null && this.messageID != null) {
-			const message = await DiscordModule.fetchMessageWithNotFoundHandling(this.channel, this.messageID) ?? undefined;
+			const message = await Module.discord.fetchMessageWithNotFoundHandling(this.channel, this.messageID) ?? undefined;
 			if (message == null)
 				this.unsetMessage();
 		}
 	}
+	/** **NOTE:** this method will set {@link Module.data.needsSave} to `true` */
 	unsetMessage(reason?: string) {
 		Module.log.warn(`Guild was disabled`, {causedBy: reason ?? `"messageID" was unset`, args: {
 			guild: this.getGuildName(),

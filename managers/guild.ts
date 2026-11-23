@@ -1,10 +1,8 @@
-import Module, { slashCommandGetName } from "../index.js";
-import DiscordModule from "../../discord/index.js";
+import Module from "../index.js";
 import { GuildState, type GuildStateSave } from "./states/guild.js";
 
 import type {
 	Guild,
-	GuildTextBasedChannel,
 	DMChannel,
 	NonThreadGuildBasedChannel,
 	OmitPartialGroupDMChannel,
@@ -39,7 +37,7 @@ export class GuildStateManager extends Map<string, GuildState> {
 		return state;
 	}
 	registerDiscordCallbacks() {
-		DiscordModule.client
+		Module.discord.client
 			.on("guildCreate", g => this.onGuildCreate(g))
 			.on("guildUpdate", (oldGuild, newGuild) => this.onGuildUpdate(oldGuild, newGuild))
 			.on("guildDelete", g => this.onGuildDelete(g))
@@ -49,7 +47,6 @@ export class GuildStateManager extends Map<string, GuildState> {
 			.on("messageDelete", message => this.onMessageDelete(message))
 			.on("roleDelete", role => this.onRoleDelete(role))
 			.on("messageReactionAdd", (reaction, user, details) => this.onMessageReactionAdd(reaction, user, details))
-			//.on("messageReactionRemoveEmoji", (reaction) => this.onMessageReactionRemoveEmoji(reaction))
 			.on("messageReactionRemove", (reaction, user, details) => this.onMessageReactionRemove(reaction, user, details));
 	}
 
@@ -65,9 +62,9 @@ export class GuildStateManager extends Map<string, GuildState> {
 	}
 
 	protected onGuildCreate(guild: Guild) {
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, guild.id)) return;
-
 		this._availableGuildsCount++;
+
+		if (!Module.isAllowedInGuild(guild)) return;
 		
 		let state = this.get(guild.id);
 		if (state != null) {
@@ -84,7 +81,7 @@ export class GuildStateManager extends Map<string, GuildState> {
 		Module.data.save();
 	}
 	protected onGuildUpdate(oldGuild: Guild, newGuild: Guild) {
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, newGuild.id)) return;
+		if (!Module.isAllowedInGuild(newGuild)) return;
 
 		const state = this.get(newGuild.id);
 		if (state == null || !state.enabled) return;
@@ -94,6 +91,8 @@ export class GuildStateManager extends Map<string, GuildState> {
 	protected onGuildDelete(guild: Guild) {
 		this._availableGuildsCount--;
 
+		if (!Module.isAllowedInGuild(guild)) return;
+
 		const state = this.get(guild.id);
 		if (state == null) return;
 
@@ -102,7 +101,7 @@ export class GuildStateManager extends Map<string, GuildState> {
 	protected async onGuildAvailable(guild: Guild) {
 		this._availableGuildsCount++;
 
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, guild.id)) return;
+		if (!Module.isAllowedInGuild(guild)) return;
 
 		const state = this.get(guild.id);
 		if (state == null || !state.enabled) return;
@@ -112,13 +111,13 @@ export class GuildStateManager extends Map<string, GuildState> {
 		await state.setChannelFromFetch();
 		await state.setRoleFromFetch();
 		await state.setMessageFromFetch();
-		if (this._availableGuildsCount >= DiscordModule.client.guilds.cache.size)
+		if (this._availableGuildsCount >= Module.discord.client.guilds.cache.size)
 			Module.data.save(true);
 	}
 	protected onGuildUnavailable(guild: Guild) {
 		this._availableGuildsCount--;
 
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, guild.id)) return;
+		if (!Module.isAllowedInGuild(guild)) return;
 
 		const state = this.get(guild.id);
 		if (state == null) return;
@@ -127,17 +126,17 @@ export class GuildStateManager extends Map<string, GuildState> {
 	}
 	protected onChannelUpdate(oldChannel: DMChannel | NonThreadGuildBasedChannel, newChannel: DMChannel | NonThreadGuildBasedChannel) {
 		if (newChannel.isDMBased()) return;
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, newChannel.guild.id)) return;
+		if (!Module.isAllowedInGuild(newChannel.guild)) return;
 
 		const state = this.get(newChannel.guild.id);
 		if (state == null || !state.enabled) return;
 
 		if (state.channelID === newChannel.id)
-			state.channel = newChannel as GuildTextBasedChannel;
+			state.channel = newChannel as typeof state.channel;
 	}
 	protected onChannelDelete(channel: DMChannel | NonThreadGuildBasedChannel) {
 		if (channel.isDMBased()) return;
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, channel.guild.id)) return;
+		if (!Module.isAllowedInGuild(channel.guild)) return;
 
 		const state = this.get(channel.guild.id);
 		if (state == null || !state.enabled) return;
@@ -149,17 +148,18 @@ export class GuildStateManager extends Map<string, GuildState> {
 	}
 	protected onMessageDelete(message: OmitPartialGroupDMChannel<Message<boolean> | PartialMessage<boolean>>) {
 		if (!message.inGuild()) return;
+		if (!Module.isAllowedInGuild(message.guild)) return;
 
 		const state = this.get(message.guild.id);
 		if (state == null || !state.enabled) return;
 
-		if (state.messageID === state.messageID)
+		if (state.messageID === message.id)
 			state.unsetMessage("Message was deleted");
 
 		Module.data.save();
 	}
 	protected onRoleDelete(role: Role) {
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, role.guild.id)) return;
+		if (!Module.isAllowedInGuild(role.guild)) return;
 
 		const state = this.get(role.guild.id);
 		if (state == null || !state.enabled) return;
@@ -171,38 +171,38 @@ export class GuildStateManager extends Map<string, GuildState> {
 	}
 	protected async onMessageReactionAdd(reaction: MessageReaction | PartialMessageReaction, user: User | PartialUser, details: MessageReactionEventDetails) {
 		if (!reaction.message.inGuild()) return;
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, reaction.message.guild.id)) return;
+		if (!Module.isAllowedInGuild(reaction.message.guild)) return;
 
 		const state = this.get(reaction.message.guild.id);
 		if (state == null || !state.enabled) return;
 
 		if (reaction.message.id !== state.messageID) return;
 
-		const member = await DiscordModule.fetchGuildMemberWithNotFoundHandling(reaction.message.guild, user.id);
+		const member = await Module.discord.fetchGuildMemberWithNotFoundHandling(reaction.message.guild, user.id);
 		if (member == null) return;
 
 		await member.roles.add(state.roleID!);
 		Module.log.info("Added role to guild member", {args: {
-			guild: DiscordModule.getGuildNameAndID(reaction.message.guild),
-			member: DiscordModule.getGuildMemberNameAndID(member),
+			guild: Module.discord.getGuildNameAndID(reaction.message.guild),
+			member: Module.discord.getGuildMemberNameAndID(member),
 		}});
 	}
 	protected async onMessageReactionRemove(reaction: MessageReaction | PartialMessageReaction, user: User | PartialUser, details: MessageReactionEventDetails) {
 		if (!reaction.message.inGuild()) return;
-		if (!DiscordModule.slashCommands.isCommandInGuildAllowed(slashCommandGetName, reaction.message.guild.id)) return;
+		if (!Module.isAllowedInGuild(reaction.message.guild)) return;
 
 		const state = this.get(reaction.message.guild.id);
 		if (state == null || !state.enabled) return;
 
 		if (reaction.message.id !== state.messageID) return;
 
-		const member = await DiscordModule.fetchGuildMemberWithNotFoundHandling(reaction.message.guild, user.id);
+		const member = await Module.discord.fetchGuildMemberWithNotFoundHandling(reaction.message.guild, user.id);
 		if (member == null) return;
 
 		await member.roles.remove(state.roleID!);
 		Module.log.info("Removed role from guild member", {args: {
-			guild: DiscordModule.getGuildNameAndID(reaction.message.guild),
-			member: DiscordModule.getGuildMemberNameAndID(member),
+			guild: Module.discord.getGuildNameAndID(reaction.message.guild),
+			member: Module.discord.getGuildMemberNameAndID(member),
 		}});
 	}
 }

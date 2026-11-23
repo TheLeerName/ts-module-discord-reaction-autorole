@@ -1,46 +1,85 @@
-import Core from "../../index.js";
-import DiscordModule from "../discord/index.js";
-import Data from "./data.js";
+import * as Core from "../../index.js";
+import { type Module as DiscordModule } from "../discord/index.js";
 import { GuildStateManager } from "./managers/guild.js";
 import SlashCommandGet from "./slash-commands/get.js";
 import SlashCommandSet from "./slash-commands/set.js";
 
-import * as Discord from "discord.js";
+import {
+	type Guild,
+	PermissionFlagsBits,
+	GatewayIntentBits,
+	Partials,
+} from "discord.js";
 
-export class DiscordReactionAutoRoleModule {
+export class Module {
+	readonly initializeBefore = ["discord"];
 	readonly name = "discord-reaction-autorole" as const;
 	readonly data: Data;
-	readonly log = Core.log.makeFunctions(this.name);
+	readonly log: Core.ModuleLogFunctions;
+	readonly core: Core.Core;
+	readonly discord: DiscordModule;
+	readonly guilds: GuildStateManager;
 
-	isDisabled = () => false;
+	isAllowedInGuild(guild: Guild) {
+		return this.discord.slashCommands.isCommandInGuildAllowed(SlashCommandGet().name, guild.id);
+	}
 
-	readonly guilds: GuildStateManager = new GuildStateManager();
+	async initialize() {
+		//throw new Error("nope.");
 
-	constructor() {
-		if (this.isDisabled()) return;
-		this.data = new Data(this).initialize();
+		const discord = Core.default.modules.getInstance<DiscordModule>("discord");
+		if (discord == null) return;
 
-		DiscordModule
-			.once("addAuthorizationFields", a => a
-				.addPermissions(Discord.PermissionFlagsBits.ReadMessageHistory, Discord.PermissionFlagsBits.ManageRoles, Discord.PermissionFlagsBits.ViewChannel)
-				.addIntents(Discord.GatewayIntentBits.Guilds, Discord.GatewayIntentBits.GuildMessages, Discord.GatewayIntentBits.GuildMessageReactions)
-				.addPartials(Discord.Partials.Message, Discord.Partials.Reaction, Discord.Partials.Channel, Discord.Partials.GuildMember))
+		Core.default.modules.setReadonlyFields(this, {
+			data: new Data(this),
+			core: Core.default,
+			log: Core.default.log.makeFunctions(this.name),
+			discord,
+			guilds: new GuildStateManager(),
+		});
+		this.data.initialize();
+
+		this.discord
+			.addPermissions(PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageRoles, PermissionFlagsBits.ViewChannel)
+			.addIntents(GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions)
+			.addPartials(Partials.Channel, Partials.Message, Partials.Reaction)
 			.once("afterClientCreation", () => this.afterDiscordClientCreation());
 	}
 
 	protected afterDiscordClientCreation() {
-		DiscordModule.slashCommands.push(SlashCommandGet(), SlashCommandSet());
+		SlashCommandGet();
+		SlashCommandSet();
 		this.guilds.registerDiscordCallbacks();
 	}
 }
-export default new DiscordReactionAutoRoleModule();
 
-export {
-	GuildStateManager,
-	type GuildStateManagerSave,
-	GuildState,
-	type GuildStateAvailable,
-	type GuildStateSave,
-} from "./managers/guild.js";
+export class Data extends Core.BaseData {
+	/** If this `true`, next call of {@link save()} will save data */
+	needsSave = false;
 
-export { slashCommandGetName } from "./slash-commands/get.js";
+	protected module: Module;
+
+	initialize() {
+		const json = this.getSavedFields();
+		this.needsSave = true;
+
+		this.needsSave = this.registerFieldArray(json, "guilds",
+			savedValue => this.module.guilds.fromJSON(savedValue),
+			() => this.module.guilds.toJSON(),
+		);
+
+		this.save();
+		return this;
+	}
+
+	async save(force?: boolean) {
+		if (force || this.needsSave) {
+			await super.save();
+			this.needsSave = false;
+		}
+	}
+}
+
+export default new Module();
+
+export * from "./managers/guild.js";
