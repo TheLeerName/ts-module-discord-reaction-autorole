@@ -4,11 +4,10 @@ import { EmbedBuilder } from "discord.js";
 /** That command name used for slash command allowing/banning system, if this will be banned on server, module will stop functioning on this server */
 export default () => Module.discord.slashCommands.make("reaction-autorole-get", c => {c
 .setVersion(1)
+.setType("guild")
 .setDescription(`Sends "${Module.name}" module parameters of this server`)
 .setDescriptionLocalization("ru", `Отправляет параметры модуля "${Module.name}" этого сервера`)
 .setChatInput(async(interaction) => {
-	if (!interaction.inCachedGuild()) return;
-
 	const start = Date.now();
 	await interaction.deferReply();
 

@@ -3,11 +3,10 @@ import { EmbedBuilder } from "discord.js";
 
 export default () => Module.discord.slashCommands.make("reaction-autorole-set", c => {c
 .setVersion(1)
+.setType("guild")
 .setDescription(`Changes "${Module.name}" module parameters of this server`)
 .setDescriptionLocalization("ru", `Изменяет параметры модуля "${Module.name}" этого сервера`)
 .setChatInput(async(interaction) => {
-	if (!interaction.inCachedGuild()) return;
-
 	const start = Date.now();
 	await interaction.deferReply();
 
