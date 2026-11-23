@@ -4,10 +4,10 @@ Adds specified role to any user reacted to specified discord message, before sta
 ## Features
 1. Adds slash commands:
 
-|Name|Description|
+|Name|Type|Description|
 |---|---|
-|`/reaction-autorole-set`|Sets some required parameters for discord server:<br>- Link to message with reaction<br>- Gained role for reaction|
-|`/reaction-autorole-get`|Sends these parameters above as discord embed message|
+|`/reaction-autorole-set`|Guild-only|Sets some required parameters for discord server:<br>- Link to message with reaction<br>- Gained role for reaction|
+|`/reaction-autorole-get`|Guild-only|Sends these parameters above as discord embed message|
 
 2. If command `/reaction-autorole-get` is banned on server by slash command allowing/banning system, module will stop functioning on this server
 
